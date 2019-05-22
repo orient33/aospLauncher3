@@ -16,6 +16,7 @@
 package com.android.launcher3.ui.widget;
 
 import android.appwidget.AppWidgetHost;
+import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -29,12 +30,12 @@ import android.support.test.runner.AndroidJUnit4;
 import android.support.test.uiautomator.UiSelector;
 
 import com.android.launcher3.LauncherAppWidgetHost;
-import com.android.launcher3.LauncherAppWidgetHostView;
+import com.android.launcher3.widget.LauncherAppWidgetHostView;
 import com.android.launcher3.LauncherAppWidgetInfo;
 import com.android.launcher3.LauncherAppWidgetProviderInfo;
 import com.android.launcher3.LauncherModel;
 import com.android.launcher3.LauncherSettings;
-import com.android.launcher3.PendingAppWidgetHostView;
+import com.android.launcher3.widget.PendingAppWidgetHostView;
 import com.android.launcher3.Workspace;
 import com.android.launcher3.compat.AppWidgetManagerCompat;
 import com.android.launcher3.compat.PackageInstallerCompat;
@@ -48,6 +49,7 @@ import com.android.launcher3.widget.WidgetHostViewLoader;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -121,7 +123,7 @@ public class BindWidgetTest extends AbstractLauncherUiTest {
         setupAndVerifyContents(item, LauncherAppWidgetHostView.class, info.label);
     }
 
-    @Test
+    @Test @Ignore
     public void testUnboundWidget_removed() throws Exception {
         LauncherAppWidgetProviderInfo info = findWidgetProvider(false);
         LauncherAppWidgetInfo item = createWidgetInfo(info, false);
@@ -171,11 +173,12 @@ public class BindWidgetTest extends AbstractLauncherUiTest {
         // Widget has a valid Id now.
         assertEquals(0, mCursor.getInt(mCursor.getColumnIndex(LauncherSettings.Favorites.RESTORED))
                 & LauncherAppWidgetInfo.FLAG_ID_NOT_VALID);
-        assertNotNull(mWidgetManager.getAppWidgetInfo(mCursor.getInt(mCursor.getColumnIndex(
-                LauncherSettings.Favorites.APPWIDGET_ID))));
+        assertNotNull(AppWidgetManager.getInstance(mTargetContext)
+                .getAppWidgetInfo(mCursor.getInt(mCursor.getColumnIndex(
+                        LauncherSettings.Favorites.APPWIDGET_ID))));
     }
 
-    @Test
+    @Test @Ignore
     public void testPendingWidget_notRestored_removed() throws Exception {
         LauncherAppWidgetInfo item = getInvalidWidgetInfo();
         item.restoreStatus = LauncherAppWidgetInfo.FLAG_ID_NOT_VALID
@@ -297,7 +300,7 @@ public class BindWidgetTest extends AbstractLauncherUiTest {
         item.spanY = info.minSpanY;
         item.minSpanX = info.minSpanX;
         item.minSpanY = info.minSpanY;
-        item.user = info.getUser();
+        item.user = info.getProfile();
         item.cellX = 0;
         item.cellY = 1;
         item.container = LauncherSettings.Favorites.CONTAINER_DESKTOP;

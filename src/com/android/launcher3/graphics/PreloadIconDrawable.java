@@ -30,9 +30,10 @@ import android.graphics.PathMeasure;
 import android.graphics.Rect;
 import android.util.Property;
 import android.util.SparseArray;
-import android.view.animation.LinearInterpolator;
 
 import com.android.launcher3.FastBitmapDrawable;
+import com.android.launcher3.ItemInfoWithIcon;
+import com.android.launcher3.anim.Interpolators;
 
 import java.lang.ref.WeakReference;
 
@@ -76,7 +77,7 @@ public class PreloadIconDrawable extends FastBitmapDrawable {
     private final Matrix mTmpMatrix = new Matrix();
     private final PathMeasure mPathMeasure = new PathMeasure();
 
-    private final Context mContext;
+    private final ItemInfoWithIcon mItem;
 
     // Path in [0, 100] bounds.
     private final Path mProgressPath;
@@ -86,7 +87,7 @@ public class PreloadIconDrawable extends FastBitmapDrawable {
     private final Paint mProgressPaint;
 
     private Bitmap mShadowBitmap;
-    private int mIndicatorColor = 0;
+    private final int mIndicatorColor;
 
     private int mTrackAlpha;
     private float mTrackLength;
@@ -103,9 +104,9 @@ public class PreloadIconDrawable extends FastBitmapDrawable {
     /**
      * @param progressPath fixed path in the bounds [0, 0, 100, 100] representing a progress bar.
      */
-    public PreloadIconDrawable(Bitmap b, Path progressPath, Context context) {
-        super(b);
-        mContext = context;
+    public PreloadIconDrawable(ItemInfoWithIcon info, Path progressPath, Context context) {
+        super(info);
+        mItem = info;
         mProgressPath = progressPath;
         mScaledTrackPath = new Path();
         mScaledProgressPath = new Path();
@@ -113,6 +114,7 @@ public class PreloadIconDrawable extends FastBitmapDrawable {
         mProgressPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         mProgressPaint.setStyle(Paint.Style.STROKE);
         mProgressPaint.setStrokeCap(Paint.Cap.ROUND);
+        mIndicatorColor = IconPalette.getPreloadProgressColor(context, mIconColor);
 
         setInternalProgress(0);
     }
@@ -160,9 +162,9 @@ public class PreloadIconDrawable extends FastBitmapDrawable {
     }
 
     @Override
-    public void draw(Canvas canvas) {
+    public void drawInternal(Canvas canvas, Rect bounds) {
         if (mRanFinishAnimation) {
-            super.draw(canvas);
+            super.drawInternal(canvas, bounds);
             return;
         }
 
@@ -170,15 +172,13 @@ public class PreloadIconDrawable extends FastBitmapDrawable {
         mProgressPaint.setColor(mIndicatorColor);
         mProgressPaint.setAlpha(mTrackAlpha);
         if (mShadowBitmap != null) {
-            canvas.drawBitmap(mShadowBitmap, getBounds().left, getBounds().top, mProgressPaint);
+            canvas.drawBitmap(mShadowBitmap, bounds.left, bounds.top, mProgressPaint);
         }
         canvas.drawPath(mScaledProgressPath, mProgressPaint);
 
-        int saveCount = canvas.save(Canvas.MATRIX_SAVE_FLAG);
-        Rect bounds = getBounds();
-
+        int saveCount = canvas.save();
         canvas.scale(mIconScale, mIconScale, bounds.exactCenterX(), bounds.exactCenterY());
-        super.draw(canvas);
+        super.drawInternal(canvas, bounds);
         canvas.restoreToCount(saveCount);
     }
 
@@ -226,7 +226,7 @@ public class PreloadIconDrawable extends FastBitmapDrawable {
             mCurrentAnim = ObjectAnimator.ofFloat(this, INTERNAL_STATE, finalProgress);
             mCurrentAnim.setDuration(
                     (long) ((finalProgress - mInternalStateProgress) * DURATION_SCALE));
-            mCurrentAnim.setInterpolator(new LinearInterpolator());
+            mCurrentAnim.setInterpolator(Interpolators.LINEAR);
             if (isFinish) {
                 mCurrentAnim.addListener(new AnimatorListenerAdapter() {
                     @Override
@@ -237,7 +237,6 @@ public class PreloadIconDrawable extends FastBitmapDrawable {
             }
             mCurrentAnim.start();
         }
-
     }
 
     /**
@@ -267,9 +266,6 @@ public class PreloadIconDrawable extends FastBitmapDrawable {
             mScaledTrackPath.reset();
             mTrackAlpha = MAX_PAINT_ALPHA;
             setIsDisabled(true);
-        } else if (mIndicatorColor == 0) {
-            // Update the indicator color
-            mIndicatorColor = getIconPalette().getPreloadProgressColor(mContext);
         }
 
         if (progress < 1 && progress > 0) {
@@ -278,7 +274,7 @@ public class PreloadIconDrawable extends FastBitmapDrawable {
             mTrackAlpha = MAX_PAINT_ALPHA;
             setIsDisabled(true);
         } else if (progress >= 1) {
-            setIsDisabled(false);
+            setIsDisabled(mItem.isDisabled());
             mScaledTrackPath.set(mScaledProgressPath);
             float fraction = (progress - 1) / COMPLETE_ANIM_FRACTION;
 

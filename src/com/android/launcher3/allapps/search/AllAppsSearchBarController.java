@@ -15,7 +15,6 @@
  */
 package com.android.launcher3.allapps.search;
 
-import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.Editable;
@@ -23,16 +22,14 @@ import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.View.OnFocusChangeListener;
 import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 
 import com.android.launcher3.ExtendedEditText;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.Utilities;
-import com.android.launcher3.discovery.AppDiscoveryItem;
-import com.android.launcher3.discovery.AppDiscoveryUpdateState;
 import com.android.launcher3.util.ComponentKey;
 import com.android.launcher3.util.PackageManagerHelper;
 
@@ -42,7 +39,8 @@ import java.util.ArrayList;
  * An interface to a search box that AllApps can command.
  */
 public class AllAppsSearchBarController
-        implements TextWatcher, OnEditorActionListener, ExtendedEditText.OnBackKeyListener {
+        implements TextWatcher, OnEditorActionListener, ExtendedEditText.OnBackKeyListener,
+        OnFocusChangeListener {
 
     protected Launcher mLauncher;
     protected Callbacks mCb;
@@ -50,7 +48,6 @@ public class AllAppsSearchBarController
     protected String mQuery;
 
     protected SearchAlgorithm mSearchAlgorithm;
-    protected InputMethodManager mInputMethodManager;
 
     public void setVisibility(int visibility) {
         mInput.setVisibility(visibility);
@@ -68,10 +65,7 @@ public class AllAppsSearchBarController
         mInput.addTextChangedListener(this);
         mInput.setOnEditorActionListener(this);
         mInput.setOnBackKeyListener(this);
-
-        mInputMethodManager = (InputMethodManager)
-                mInput.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-
+        mInput.setOnFocusChangeListener(this);
         mSearchAlgorithm = searchAlgorithm;
     }
 
@@ -133,26 +127,20 @@ public class AllAppsSearchBarController
         return false;
     }
 
+    @Override
+    public void onFocusChange(View view, boolean hasFocus) {
+        if (!hasFocus) {
+            mInput.hideKeyboard();
+        }
+    }
+
     /**
      * Resets the search bar state.
      */
     public void reset() {
-        unfocusSearchField();
         mCb.clearSearchResult();
-        mInput.setText("");
+        mInput.reset();
         mQuery = null;
-        hideKeyboard();
-    }
-
-    protected void hideKeyboard() {
-        mInputMethodManager.hideSoftInputFromWindow(mInput.getWindowToken(), 0);
-    }
-
-    protected void unfocusSearchField() {
-        View nextFocus = mInput.focusSearch(View.FOCUS_DOWN);
-        if (nextFocus != null) {
-            nextFocus.requestFocus();
-        }
     }
 
     /**
@@ -185,18 +173,6 @@ public class AllAppsSearchBarController
          * Called when the search results should be cleared.
          */
         void clearSearchResult();
-
-        /**
-         * Called when the app discovery is providing an update of search, which can either be
-         * START for starting a new discovery,
-         * UPDATE for providing a new search result, can be called multiple times,
-         * END for indicating the end of results.
-         *
-         * @param app result item if UPDATE, else null
-         * @param app the update state, START, UPDATE or END
-         */
-        void onAppDiscoverySearchUpdate(@Nullable AppDiscoveryItem app,
-                @NonNull AppDiscoveryUpdateState state);
     }
 
 }

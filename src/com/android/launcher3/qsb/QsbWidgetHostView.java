@@ -52,19 +52,20 @@ public class QsbWidgetHostView extends AppWidgetHostView {
         return mPreviousOrientation != orientation;
     }
 
+    @Override
+    public void setPadding(int left, int top, int right, int bottom) {
+        // Prevent the base class from applying the default widget padding.
+        super.setPadding(0, 0, 0, 0);
+    }
 
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         try {
             super.onLayout(changed, left, top, right, bottom);
         } catch (final RuntimeException e) {
-            post(new Runnable() {
-                @Override
-                public void run() {
-                    // Update the widget with 0 Layout id, to reset the view to error view.
-                    updateAppWidget(new RemoteViews(getAppWidgetInfo().provider.getPackageName(), 0));
-                }
-            });
+            // Update the widget with 0 Layout id, to reset the view to error view.
+            post(() -> updateAppWidget(
+                    new RemoteViews(getAppWidgetInfo().provider.getPackageName(), 0)));
         }
     }
 
@@ -73,15 +74,19 @@ public class QsbWidgetHostView extends AppWidgetHostView {
         return getDefaultView(this);
     }
 
+    @Override
+    protected View getDefaultView() {
+        View v = super.getDefaultView();
+        v.setOnClickListener((v2) ->
+                Launcher.getLauncher(getContext()).startSearch("", false, null, true));
+        return v;
+    }
+
     public static View getDefaultView(ViewGroup parent) {
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.qsb_default_view, parent, false);
-        v.findViewById(R.id.btn_qsb_search).setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Launcher.getLauncher(view.getContext()).startSearch("", false, null, true);
-            }
-        });
+        v.findViewById(R.id.btn_qsb_search).setOnClickListener((v2) ->
+                Launcher.getLauncher(v2.getContext()).startSearch("", false, null, true));
         return v;
     }
 }
